@@ -1,0 +1,41 @@
+
+import sqlite3
+from pandasql import sqldf
+import pandas as pd
+import matplotlib.pyplot as plt
+import datetime
+from dateutil import parser
+import xlrd
+from pandas import ExcelWriter
+
+
+
+# df_trip_data_part1 = pd.read_sql_query("""
+#                           select * from fact_trips 
+#                           left join dim_stations on
+#                           fact_trips.start_station_id = dim_stations.id
+#                           left join (select * from dim_stations) as dim_stations_end on
+#                           fact_trips.end_station_id = dim_stations_end.id
+#                           left join (select id, entity_type as Subscriber_Type from dim_entity) as subscriber on
+#                           fact_trips.entity_id = subscriber.id
+#                           left join (select entity_id, zip_code from dim_entity_zip) as entity_zip_a on
+#                           fact_trips.entity_id = entity_zip_a.entity_id
+#                           ;
+#                           """, 
+#                           conn)
+
+df = pd.read_csv("201408_trip_data.csv")
+df['Start Date'] = pd.to_datetime(df['Start Date'])
+df['End Date'] = pd.to_datetime(df['End Date'])
+df['Start Day of Week'] = df['Start Date'].dt.strftime('%A')
+df['Duration_parsed']
+df.head()
+df.apply(pd.Series.nunique)
+df_filter = df.sort_values(by=['Duration'], ascending=False)
+df_filter = df_filter.head(10)
+plt.hist(df['Duration'], normed=True, bins=30)
+
+writer = ExcelWriter('uberoutput.xlsx')
+df_filter.to_excel(writer,'Sheet1')
+writer.save()
+

@@ -7,7 +7,11 @@ from dateutil import parser
 import xlrd
 from pandas import ExcelWriter
 from uszipcode import ZipcodeSearchEngine
+import plotly.plotly as py
 # https://rpubs.com/alsonyap/sfbabs_analysis
+# http://www.digital-geography.com/python-and-webmaps-folium/
+# https://blog.dominodatalab.com/creating-interactive-crime-maps-with-folium/
+# http://nbviewer.jupyter.org/gist/anonymous/33f38b09ad3bfa277e2d9c06e4bb588c
 
 
 # df_trip_data_part1 = pd.read_sql_query("""
@@ -45,7 +49,7 @@ zips.rename(columns=dict(zip='Zip Code',
                          city='subscriber_city'), 
             inplace=True)  
 # specify join columns along with zips' columns to copy
-cols = ['Zip Code', 'subscriber_city', 'state']
+cols = ['Zip Code', 'subscriber_city', 'state', 'lat', 'lng']
 df = df.merge(zips[cols], how='left')
 df.head(10)
 df.apply(pd.Series.nunique)
@@ -135,6 +139,8 @@ user_routes = pd.pivot_table(df, index=['Route'], values=['Trip ID'], aggfunc=[l
 user_routes.sort_values(('len', 'Trip ID'), ascending=False).head(10)
 
 
+
+
 sf = ["South Van Ness at Market", "Market at 10th", "San Francisco City Hall", 
         "Golden Gate at Polk", 
         "Civic Center BART (7th at Market)", "Powell Street BART", 
@@ -149,5 +155,3 @@ sf = ["South Van Ness at Market", "Market at 10th", "San Francisco City Hall",
         "2nd at Townsend", "San Francisco Caltrain (Townsend at 4th)", "Townsend at 7th",
         "San Francisco Caltrain 2 (330 Townsend)"]
         
-
-       

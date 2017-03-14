@@ -23,17 +23,31 @@ from uszipcode import ZipcodeSearchEngine
 #                           ;
 #                           """, 
 #                           conn)
+# get the zips database
+
+zips = pd.io.parsers.read_csv('https://github.com/kh7393/bikesharing/blob/master/uszipsv1.1.csv?raw=true', dtype={'zip': 'str'})
+zips['zip'] = zips.zip.astype(str)
 
 df = pd.io.parsers.read_csv('201408_trip_data.csv', dtype={'Zip Code': 'str'})
 df['Start Date'] = pd.to_datetime(df['Start Date'])
 df['End Date'] = pd.to_datetime(df['End Date'])
 df['Start Day of Week'] = df['Start Date'].dt.strftime('%A')
 df['End Day of Week'] = df['End Date'].dt.strftime('%A')
+df['Start Date Month'] = df['Start Date'].dt.strftime('%B')
+df['End Date Month'] = df['End Date'].dt.strftime('%B')
 df['Start Hour'] = df['Start Date'].dt.strftime('%H')
 df['End Hour'] = df['End Date'].dt.strftime('%H')
 df['Duration_parsed'] = pd.to_timedelta(df['Duration'], unit='m')
 df['Route'] = df['Start Station'] + "-" + df['Start Terminal'].astype(str) + " -> " + df['End Station'] + "-" + df['End Terminal'].astype(str)
-df.head()
+
+# -- prepare common join columns
+zips.rename(columns=dict(zip='Zip Code',
+                         city='subscriber_city'), 
+            inplace=True)  
+# specify join columns along with zips' columns to copy
+cols = ['Zip Code', 'subscriber_city', 'state']
+df = df.merge(zips[cols], how='left')
+df.head(10)
 df.apply(pd.Series.nunique)
 df_filter = df.sort_values(by=['Duration'], ascending=False)
 df_filter = df_filter.head(10)
@@ -73,6 +87,54 @@ hour_of_day_weekday_plot = hour_of_day_weekday.unstack().plot(kind='bar',stacked
 hour_of_day_weekday_plot.set_xlabel("Hour of Day")
 hour_of_day_weekday_plot.set_ylabel("No. of Trips")
 
+# most popular stations - weekend, customer
+station_weekend = pd.pivot_table(df_filter_weekend,index=['Start Station'],columns=['Subscriber Type'],values=['Trip ID'],aggfunc=[len])
+station_weekend_customer = station_weekend[('len', 'Trip ID', 'Customer')]
+station_weekend_customer.nlargest(10)
+
+station_weekend_end = pd.pivot_table(df_filter_weekend,index=['End Station'],columns=['Subscriber Type'],values=['Trip ID'],aggfunc=[len])
+station_weekend_end_customer = station_weekend_end[('len', 'Trip ID', 'Customer')]
+station_weekend_end_customer.nlargest(10)
+
+# most popular stations - weekend, subscriber
+station_weekend_subscriber = station_weekend[('len', 'Trip ID', 'Subscriber')]
+print station_weekend_subscriber.nlargest(10)
+
+station_weekend_end_customer = station_weekend_end[('len', 'Trip ID', 'Subscriber')]
+station_weekend_end_customer.nlargest(10)
+
+# most popular stations - weekday, customer
+station_weekday = pd.pivot_table(df_filter_weekday,index=['Start Station'],columns=['Subscriber Type'],values=['Trip ID'],aggfunc=[len])
+station_weekday_customer = station_weekday[('len', 'Trip ID', 'Customer')]
+print station_weekday_customer.nlargest(10)
+
+station_weekday_end = pd.pivot_table(df_filter_weekday,index=['End Station'],columns=['Subscriber Type'],values=['Trip ID'],aggfunc=[len])
+station_weekday_end_customer = station_weekday_end[('len', 'Trip ID', 'Customer')]
+station_weekday_end_customer.nlargest(10)
+
+# most popular stations - weekday, subscriber
+station_weekday_subscriber = station_weekday[('len', 'Trip ID', 'Subscriber')]
+print station_weekday_subscriber.nlargest(10)
+
+station_weekday_end_customer = station_weekday_end[('len', 'Trip ID', 'Subscriber')]
+station_weekday_end_customer.nlargest(10)
+
+# monthly trends - number of trips
+df['Start Date_Short'] = df['Start Date'].dt.strftime('%Y-%m-%d')
+monthly_trips = df.groupby(['Start Date_Short'])['Trip ID'].count()
+monthly_trips_plot = monthly_trips.plot(title="No. of trips by Month")
+monthly_trips_plot.set_xlabel("Month")
+monthly_trips_plot.set_ylabel("No. of Trips")
+
+# top 10 users by city
+user_city = pd.pivot_table(df, index=['subscriber_city'], values=['Trip ID'], aggfunc=[len])
+user_city = user_city.sort_values(('len', 'Trip ID'), ascending=False).head(10)
+
+# top 10 routes
+user_routes = pd.pivot_table(df, index=['Route'], values=['Trip ID'], aggfunc=[len])
+user_routes.sort_values(('len', 'Trip ID'), ascending=False).head(10)
+
+
 sf = ["South Van Ness at Market", "Market at 10th", "San Francisco City Hall", 
         "Golden Gate at Polk", 
         "Civic Center BART (7th at Market)", "Powell Street BART", 
@@ -87,16 +149,5 @@ sf = ["South Van Ness at Market", "Market at 10th", "San Francisco City Hall",
         "2nd at Townsend", "San Francisco Caltrain (Townsend at 4th)", "Townsend at 7th",
         "San Francisco Caltrain 2 (330 Townsend)"]
         
-City = []
-search = ZipcodeSearchEngine()
-
-for row in df['Zip Code']:
-    try:
-        zipcode = search.by_zipcode(row)
-        City.append(zipcode.City)
-    except:
-        City.append(np.NaN)
-
-df['City'] = City
 
        

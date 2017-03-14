@@ -1,0 +1,102 @@
+import sqlite3
+from pandasql import sqldf
+import pandas as pd
+import matplotlib.pyplot as plt
+import datetime
+from dateutil import parser
+import xlrd
+from pandas import ExcelWriter
+from uszipcode import ZipcodeSearchEngine
+# https://rpubs.com/alsonyap/sfbabs_analysis
+
+
+# df_trip_data_part1 = pd.read_sql_query("""
+#                           select * from fact_trips 
+#                           left join dim_stations on
+#                           fact_trips.start_station_id = dim_stations.id
+#                           left join (select * from dim_stations) as dim_stations_end on
+#                           fact_trips.end_station_id = dim_stations_end.id
+#                           left join (select id, entity_type as Subscriber_Type from dim_entity) as subscriber on
+#                           fact_trips.entity_id = subscriber.id
+#                           left join (select entity_id, zip_code from dim_entity_zip) as entity_zip_a on
+#                           fact_trips.entity_id = entity_zip_a.entity_id
+#                           ;
+#                           """, 
+#                           conn)
+
+df = pd.io.parsers.read_csv('201408_trip_data.csv', dtype={'Zip Code': 'str'})
+df['Start Date'] = pd.to_datetime(df['Start Date'])
+df['End Date'] = pd.to_datetime(df['End Date'])
+df['Start Day of Week'] = df['Start Date'].dt.strftime('%A')
+df['End Day of Week'] = df['End Date'].dt.strftime('%A')
+df['Start Hour'] = df['Start Date'].dt.strftime('%H')
+df['End Hour'] = df['End Date'].dt.strftime('%H')
+df['Duration_parsed'] = pd.to_timedelta(df['Duration'], unit='m')
+df['Route'] = df['Start Station'] + "-" + df['Start Terminal'].astype(str) + " -> " + df['End Station'] + "-" + df['End Terminal'].astype(str)
+df.head()
+df.apply(pd.Series.nunique)
+df_filter = df.sort_values(by=['Duration'], ascending=False)
+df_filter = df_filter.head(10)
+plt.hist(df['Duration'], normed=True, bins=30)
+
+writer = ExcelWriter('uberoutput.xlsx')
+df_filter.to_excel(writer,'Sheet1')
+df.to_excel(writer, 'FullOutput')
+writer.save()
+
+user_breakdown = df.groupby(['Subscriber Type'])['Trip ID'].count()
+
+day_of_week = df.groupby(['Start Day of Week', 'Subscriber Type'])['Trip ID'].count()
+print day_of_week
+day_of_week.unstack()
+day_of_week_plot = day_of_week.unstack().plot(kind='bar',stacked=True,title="Subscriber Breakdown by Day of Week")
+day_of_week_plot.set_xlabel("Day of Week")
+day_of_week_plot.set_ylabel("No. of Trips")
+
+weekend = ['Saturday', 'Sunday']
+df_filter_weekend = df[df['Start Day of Week'].isin(weekend)]
+
+hour_of_day_weekend = df_filter_weekend.groupby(['Start Hour', 'Subscriber Type'])['Trip ID'].count()
+print hour_of_day_weekend
+hour_of_day_weekend.unstack()
+hour_of_day_weekend_plot = hour_of_day_weekend.unstack().plot(kind='bar',stacked=True,title="Subscriber Breakdown by Hour of Day (Weekend)")
+hour_of_day_weekend_plot.set_xlabel("Hour of Day")
+hour_of_day_weekend_plot.set_ylabel("No. of Trips")
+
+
+df_filter_weekday = df[~df['Start Day of Week'].isin(weekend)]
+
+hour_of_day_weekday = df_filter_weekday.groupby(['Start Hour', 'Subscriber Type'])['Trip ID'].count()
+print hour_of_day_weekday
+hour_of_day_weekday.unstack()
+hour_of_day_weekday_plot = hour_of_day_weekday.unstack().plot(kind='bar',stacked=True,title="Subscriber Breakdown by Hour of Day (Weekday)")
+hour_of_day_weekday_plot.set_xlabel("Hour of Day")
+hour_of_day_weekday_plot.set_ylabel("No. of Trips")
+
+sf = ["South Van Ness at Market", "Market at 10th", "San Francisco City Hall", 
+        "Golden Gate at Polk", 
+        "Civic Center BART (7th at Market)", "Powell Street BART", 
+        "Powell at Post (Union Square)", "5th at Howard", "Market at 4th", "Post at Kearny", 
+        "Commercial at Montgomery", "Washington at Kearny", "Grant Avenue at Columbus Avenue", 
+        "Embarcadero at Sansome", "Embarcadero at Vallejo", "Broadway St at Battery St", 
+        "Davis at Jackson", "Clay at Battery", "Harry Bridges Plaza (Ferry Building)", 
+        "Steuart at Market", "Beale at Market", "Mechanics Plaza (Market at Battery)", 
+        "Embarcadero at Folsom", "Temporary Transbay Terminal (Howard at Beale)", 
+        "Market at Sansome", "Spear at Folsom", "Howard at 2nd", "Embarcadero at Bryant", 
+        "Yerba Buena Center of the Arts (3rd @ Howard)", "2nd at Folsom", "2nd at South Park", 
+        "2nd at Townsend", "San Francisco Caltrain (Townsend at 4th)", "Townsend at 7th",
+        "San Francisco Caltrain 2 (330 Townsend)"]
+        
+City = []
+search = ZipcodeSearchEngine()
+
+for row in df['Zip Code']:
+    try:
+        zipcode = search.by_zipcode(row)
+        City.append(zipcode.City)
+    except:
+        City.append(np.NaN)
+
+df['City'] = City
+
+       

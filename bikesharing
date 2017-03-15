@@ -41,6 +41,10 @@ df.apply(pd.Series.nunique)
 df_filter = df.sort_values(by=['Duration'], ascending=False)
 df_filter = df_filter.head(10)
 
+a = (df['Duration'].mean())/60
+a = str(a)
+print "The mean ride duration is " + a 
+
 # get trip duration and breakdown by user type
 df_filter_customer = df[df['Subscriber Type'] == 'Customer']
 df_filter_customer_mins = df_filter_customer['Duration'] / 60
@@ -152,4 +156,5 @@ user_city_export = pd.pivot_table(df, index=['Subscriber Type', 'subscriber_city
 writer = ExcelWriter('bikeshareoutput.xlsx')
 user_city_export.to_excel(writer,'Sheet1')
 writer.save()
+
 

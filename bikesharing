@@ -1,6 +1,8 @@
+%matplotlib inline
 import sqlite3
 from pandasql import sqldf
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import datetime
 from dateutil import parser
@@ -8,25 +10,8 @@ import xlrd
 from pandas import ExcelWriter
 from uszipcode import ZipcodeSearchEngine
 import plotly.plotly as py
-# https://rpubs.com/alsonyap/sfbabs_analysis
-# http://www.digital-geography.com/python-and-webmaps-folium/
-# https://blog.dominodatalab.com/creating-interactive-crime-maps-with-folium/
-# http://nbviewer.jupyter.org/gist/anonymous/33f38b09ad3bfa277e2d9c06e4bb588c
 
 
-# df_trip_data_part1 = pd.read_sql_query("""
-#                           select * from fact_trips 
-#                           left join dim_stations on
-#                           fact_trips.start_station_id = dim_stations.id
-#                           left join (select * from dim_stations) as dim_stations_end on
-#                           fact_trips.end_station_id = dim_stations_end.id
-#                           left join (select id, entity_type as Subscriber_Type from dim_entity) as subscriber on
-#                           fact_trips.entity_id = subscriber.id
-#                           left join (select entity_id, zip_code from dim_entity_zip) as entity_zip_a on
-#                           fact_trips.entity_id = entity_zip_a.entity_id
-#                           ;
-#                           """, 
-#                           conn)
 # get the zips database
 
 zips = pd.io.parsers.read_csv('https://github.com/kh7393/bikesharing/blob/master/uszipsv1.1.csv?raw=true', dtype={'zip': 'str'})
@@ -55,12 +40,33 @@ df.head(10)
 df.apply(pd.Series.nunique)
 df_filter = df.sort_values(by=['Duration'], ascending=False)
 df_filter = df_filter.head(10)
-plt.hist(df['Duration'], normed=True, bins=30)
 
-writer = ExcelWriter('uberoutput.xlsx')
-df_filter.to_excel(writer,'Sheet1')
-df.to_excel(writer, 'FullOutput')
-writer.save()
+# get trip duration and breakdown by user type
+df_filter_customer = df[df['Subscriber Type'] == 'Customer']
+df_filter_customer_mins = df_filter_customer['Duration'] / 60
+(df_filter_customer['Duration'].mean())
+(df_filter_customer['Duration'].mean())/60
+
+fig, ax = plt.subplots()
+bins = np.linspace(2, 150, 20, endpoint=True)
+plt.title('Customer Trips - frequency breakdown by Trip Duration')
+plt.xlabel('Duration (mins)')
+plt.ylabel('Frequency')
+ax.hist(df_filter_customer_mins, bins, orientation='vertical')
+plt.show()
+
+df_filter_subscriber = df[df['Subscriber Type'] == 'Subscriber']
+df_filter_subscriber_mins = df_filter_subscriber['Duration'] / 60
+(df_filter_subscriber['Duration'].mean())
+(df_filter_subscriber['Duration'].mean())/60
+
+fig, ax = plt.subplots()
+bins = np.linspace(2, 150, 20, endpoint=True)
+plt.title('Subscriber Trips - frequency breakdown by Trip Duration')
+plt.xlabel('Duration (mins)')
+plt.ylabel('Frequency')
+ax.hist(df_filter_subscriber_mins, bins, orientation='vertical')
+plt.show()
 
 user_breakdown = df.groupby(['Subscriber Type'])['Trip ID'].count()
 
@@ -138,20 +144,12 @@ user_city = user_city.sort_values(('len', 'Trip ID'), ascending=False).head(10)
 user_routes = pd.pivot_table(df, index=['Route'], values=['Trip ID'], aggfunc=[len])
 user_routes.sort_values(('len', 'Trip ID'), ascending=False).head(10)
 
+# Subscriber city Export for Viz
+user_city_export = pd.pivot_table(df, index=['Subscriber Type', 'subscriber_city', 'lat', 'lng'], values=['Trip ID'], aggfunc=[len])
 
+# use only for manual exports to excel or csv
 
+writer = ExcelWriter('bikeshareoutput.xlsx')
+user_city_export.to_excel(writer,'Sheet1')
+writer.save()
 
-sf = ["South Van Ness at Market", "Market at 10th", "San Francisco City Hall", 
-        "Golden Gate at Polk", 
-        "Civic Center BART (7th at Market)", "Powell Street BART", 
-        "Powell at Post (Union Square)", "5th at Howard", "Market at 4th", "Post at Kearny", 
-        "Commercial at Montgomery", "Washington at Kearny", "Grant Avenue at Columbus Avenue", 
-        "Embarcadero at Sansome", "Embarcadero at Vallejo", "Broadway St at Battery St", 
-        "Davis at Jackson", "Clay at Battery", "Harry Bridges Plaza (Ferry Building)", 
-        "Steuart at Market", "Beale at Market", "Mechanics Plaza (Market at Battery)", 
-        "Embarcadero at Folsom", "Temporary Transbay Terminal (Howard at Beale)", 
-        "Market at Sansome", "Spear at Folsom", "Howard at 2nd", "Embarcadero at Bryant", 
-        "Yerba Buena Center of the Arts (3rd @ Howard)", "2nd at Folsom", "2nd at South Park", 
-        "2nd at Townsend", "San Francisco Caltrain (Townsend at 4th)", "Townsend at 7th",
-        "San Francisco Caltrain 2 (330 Townsend)"]
-        

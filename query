@@ -1,9 +1,5 @@
-select * from fact_trips 
-#                           left join dim_stations on
-#                           fact_trips.start_station_id = dim_stations.id
-#                           left join (select * from dim_stations) as dim_stations_end on
-#                           fact_trips.end_station_id = dim_stations_end.id
-#                           left join (select id, entity_type as Subscriber_Type from dim_entity) as subscriber on
-#                           fact_trips.entity_id = subscriber.id
-#                           left join (select entity_id, zip_code from dim_entity_zip) as entity_zip_a on
-#                           fact_trips.entity_id = entity_zip_a.entity_id;
+SELECT * from fact_trips 
+INNER JOIN dim_stations ON fact_trips.start_station_id = dim_stations.id
+INNER JOIN  dim_stations dim_stations_end ON fact_trips.end_station_id = dim_stations_end.id
+INNER JOIN (select id, entity_type as Subscriber_Type from dim_entity) as subscriber ON fact_trips.entity_id = subscriber.id
+INNER JOIN (select entity_id, zip_code from dim_entity_zip) as entity_zip_a ON fact_trips.entity_id = entity_zip_a.entity_id;
